@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MembershipPlanController;
 use App\Http\Controllers\Api\PaymentController;
@@ -16,6 +17,8 @@ Route::get('membership-plans/{id}', [MembershipPlanController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::get('dashboard', [DashboardController::class, 'index']);
 
     Route::apiResource('subscriptions', SubscriptionController::class);
 
