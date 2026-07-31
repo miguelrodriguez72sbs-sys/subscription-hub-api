@@ -19,7 +19,7 @@ return new class extends Migration
 
             $table->enum('status', [
                 'succeeded',
-                'failed'
+                'failed',
             ])->default('failed');
 
             $table->string('gateway');

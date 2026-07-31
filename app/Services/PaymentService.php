@@ -48,7 +48,7 @@ class PaymentService
 
     protected function chargeWithStripe(Invoice $invoice): array
     {
-        $client = new Client();
+        $client = new Client;
 
         $response = $client->post(config('payment.stripe.url'), [
             'auth' => [config('payment.stripe.secret_key'), ''],
@@ -56,7 +56,7 @@ class PaymentService
                 'amount' => (int) round($invoice->amount * 100),
                 'currency' => config('payment.currency'),
                 'source' => config('payment.stripe.test_card'),
-                'description' => 'Renovacion de suscripcion #' . $invoice->subscription_id,
+                'description' => 'Renovacion de suscripcion #'.$invoice->subscription_id,
             ],
         ]);
 
@@ -90,7 +90,7 @@ class PaymentService
         return [
             'success' => true,
             'gateway' => 'simulation',
-            'reference' => 'SIM-' . Str::upper(Str::random(10)),
+            'reference' => 'SIM-'.Str::upper(Str::random(10)),
             'payload' => ['simulated' => true],
         ];
     }

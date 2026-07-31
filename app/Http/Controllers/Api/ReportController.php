@@ -96,8 +96,13 @@ class ReportController extends Controller
 
     protected function range(Request $request): array
     {
-        $from = $request->date('from', now()->subDays(30)->startOfDay());
-        $to = $request->date('to', now()->endOfDay());
+        $from = $request->has('from')
+            ? \Carbon\Carbon::parse($request->from)->startOfDay()
+            : now()->subDays(30)->startOfDay();
+
+        $to = $request->has('to')
+            ? \Carbon\Carbon::parse($request->to)->endOfDay()
+            : now()->endOfDay();
 
         return [$from, $to];
     }
