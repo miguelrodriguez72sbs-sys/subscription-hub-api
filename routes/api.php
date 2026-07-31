@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\MembershipPlanController;
@@ -9,11 +8,17 @@ use App\Http\Controllers\Api\SubscriptionController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+Route::get('membership-plans', [MembershipPlanController::class, 'index']);
+Route::get('membership-plans/{id}', [MembershipPlanController::class, 'show']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::apiResource('subscriptions', SubscriptionController::class);
+
+    Route::middleware('role:admin')->group(function () {
+        Route::apiResource('membership-plans', MembershipPlanController::class)
+            ->only(['store', 'update', 'destroy']);
+    });
 });
-
-Route::apiResource('membership-plans', MembershipPlanController::class);
-
-Route::apiResource('subscriptions', SubscriptionController::class);

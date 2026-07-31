@@ -11,6 +11,11 @@ class SubscriptionService
         return Subscription::all();
     }
 
+    public function getAllForUser(int $userId)
+    {
+        return Subscription::where('user_id', $userId)->get();
+    }
+
    public function create(array $data)
 {
     $plan = MembershipPlan::findOrFail($data['membership_plan_id']);

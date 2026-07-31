@@ -6,6 +6,7 @@ use App\Http\Requests\SubscriptionRequest;
 use App\Http\Resources\SubscriptionResource;
 use App\Services\SubscriptionService;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 
 class SubscriptionController extends Controller
 {
@@ -16,17 +17,23 @@ class SubscriptionController extends Controller
         $this -> service = $service;
     }
     
-   public function index()
+   public function index(Request $request)
 {
-    return SubscriptionResource::collection(
-        $this->service->getAll()
-    );
+    $subscriptions = $request->user()->isAdmin()
+        ? $this->service->getAll()
+        : $this->service->getAllForUser($request->user()->id);
+
+    return SubscriptionResource::collection($subscriptions);
 }
      public function store(SubscriptionRequest $request)
     {
-        $plan = $this->service->create(
-            $request->validated()
-        );
+        $data = $request->validated();
+
+        if (! $request->user()->isAdmin()) {
+            $data['user_id'] = $request->user()->id;
+        }
+
+        $plan = $this->service->create($data);
 
         return new SubscriptionResource($plan);
     }
