@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MembershipPlanController;
 use App\Http\Controllers\Api\SubscriptionController;
 
@@ -17,8 +18,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('subscriptions', SubscriptionController::class);
 
+    Route::apiResource('invoices', InvoiceController::class)
+        ->only(['index', 'show']);
+
     Route::middleware('role:admin')->group(function () {
         Route::apiResource('membership-plans', MembershipPlanController::class)
             ->only(['store', 'update', 'destroy']);
+
+        Route::patch('invoices/{id}/status', [InvoiceController::class, 'updateStatus']);
     });
 });
