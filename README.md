@@ -1,66 +1,136 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Subscription Hub API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema de gestion de suscripciones y cobros recurrentes (modo simulacion) construido con **Laravel 10** y **Sanctum**.
 
-## About Laravel
+## Roles
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- `admin` — Finance Administrator: gestiona planes, facturas, pagos, dashboard y reportes.
+- `client` — Customer (Subscriber): se suscribe a planes y ve sus propias suscripciones, facturas y pagos.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Instalacion
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve
+```
 
-## Learning Laravel
+Usuarios de ejemplo (seeder):
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+| Email | Password | Rol |
+| --- | --- | --- |
+| admin@example.com | password | admin |
+| cliente@example.com | password | client |
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Autenticacion
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Todas las rutas excepto `/register`, `/login` y ver el catalogo de planes requieren el header `Authorization: Bearer <token>`.
 
-## Laravel Sponsors
+- `POST /api/register` — registra un usuario y devuelve `token`.
+- `POST /api/login` — inicia sesion y devuelve `token`.
+- `POST /api/logout` — invalida el token actual.
+- `GET /api/user` — datos del usuario autenticado.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Endpoints
 
-### Premium Partners
+### Publicos
+| Metodo | Ruta | Descripcion |
+| --- | --- | --- |
+| GET | `/api/membership-plans` | Lista los planes disponibles |
+| GET | `/api/membership-plans/{id}` | Detalle de un plan |
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+### Suscripciones (cliente: solo las propias; admin: todas)
+| Metodo | Ruta | Descripcion |
+| --- | --- | --- |
+| GET / POST | `/api/subscriptions` | Listar / crear suscripcion |
+| GET / PUT / DELETE | `/api/subscriptions/{id}` | Ver / actualizar / cancelar |
 
-## Contributing
+### Facturas (Invoices)
+| Metodo | Ruta | Descripcion |
+| --- | --- | --- |
+| GET | `/api/invoices` | Lista de facturas |
+| GET | `/api/invoices/{id}` | Detalle de una factura |
+| PATCH | `/api/invoices/{id}/status` | Cambiar estado (solo admin) |
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Pagos
+| Metodo | Ruta | Descripcion |
+| --- | --- | --- |
+| GET | `/api/payments` | Lista de pagos |
+| POST | `/api/payments` | Procesa el pago de una factura (`{ "invoice_id": 1 }`) |
+| GET | `/api/payments/{id}` | Detalle de un pago |
 
-## Code of Conduct
+### Dashboard
+| Metodo | Ruta | Descripcion |
+| --- | --- | --- |
+| GET | `/api/dashboard` | Estadisticas (admin: MRR, suscriptores, renovaciones; cliente: su estado) |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Reportes (solo admin)
+| Metodo | Ruta | Descripcion |
+| --- | --- | --- |
+| GET | `/api/reports` | Resumen del periodo |
+| GET | `/api/reports/revenue` | Ingresos agrupados por mes |
+| GET | `/api/reports/subscriptions` | Suscripciones por estado y por dia |
+| GET | `/api/reports/invoices` | Facturas por estado y monto |
 
-## Security Vulnerabilities
+Los reportes aceptan `?from=YYYY-MM-DD&to=YYYY-MM-DD` (por defecto: ultimos 30 dias).
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Gestion de planes (solo admin)
+| Metodo | Ruta |
+| --- | --- |
+| POST | `/api/membership-plans` |
+| PUT | `/api/membership-plans/{id}` |
+| DELETE | `/api/membership-plans/{id}` |
 
-## License
+## Cobros recurrentes (Cron)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+El comando `subscriptions:process-renewals` revisa diariamente las suscripciones con `next_billing_date` vencido, genera la factura mensual, intenta el cobro y:
+
+- **Pago exitoso** → renueva la suscripcion (extiende `ends_at` y `next_billing_date`).
+- **Pago fallido** → marca la suscripcion como `expired`.
+
+Ejecutar una vez:
+
+```bash
+php artisan subscriptions:process-renewals
+```
+
+Programarlo en el servidor (cada minuto delega en el scheduler de Laravel):
+
+```cron
+* * * * * cd /ruta/al/proyecto && php artisan schedule:run >> /dev/null 2>&1
+```
+
+## Pagos simulados (Stripe Test Mode)
+
+Por defecto usa **simulacion** (sin API keys): genera un pago `succeeded` con referencia `SIM-XXXX`. Para usar **Stripe Test Mode** (100% gratis, tarjetas de prueba, sin tarjetas reales):
+
+```
+PAYMENT_GATEWAY=stripe
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+PAYMENT_CURRENCY=usd
+STRIPE_TEST_CARD=tok_visa
+```
+
+Variables de simulacion:
+- `PAYMENT_GATEWAY=simulation` — modo simulacion.
+- `PAYMENT_FAILURE_RATE=0.2` — 20% de probabilidad de que un pago falle (para probar el flujo de expiracion).
+
+## Tests
+
+```bash
+php artisan test
+```
+
+## Estructura
+
+```
+app/Console/Commands        Comando de renovacion programado
+app/Http/Controllers/Api    Controladores de la API
+app/Http/Middleware         CheckRole (roles y permisos)
+app/Models                  User, MembershipPlan, Subscription, Invoice, Payment
+app/Services                Logica de negocio (pagos, suscripciones, etc.)
+config/payment.php          Configuracion del gateway de pago
+```
