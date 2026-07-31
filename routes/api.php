@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MembershipPlanController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\SubscriptionController;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -20,6 +21,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('invoices', InvoiceController::class)
         ->only(['index', 'show']);
+
+    Route::apiResource('payments', PaymentController::class)
+        ->only(['index', 'show', 'store']);
 
     Route::middleware('role:admin')->group(function () {
         Route::apiResource('membership-plans', MembershipPlanController::class)
