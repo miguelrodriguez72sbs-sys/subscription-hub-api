@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MembershipPlanController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SubscriptionController;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -33,5 +34,10 @@ Route::middleware('auth:sanctum')->group(function () {
             ->only(['store', 'update', 'destroy']);
 
         Route::patch('invoices/{id}/status', [InvoiceController::class, 'updateStatus']);
+
+        Route::get('reports', [ReportController::class, 'index']);
+        Route::get('reports/revenue', [ReportController::class, 'revenue']);
+        Route::get('reports/subscriptions', [ReportController::class, 'subscriptions']);
+        Route::get('reports/invoices', [ReportController::class, 'invoices']);
     });
 });
