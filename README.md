@@ -24,6 +24,16 @@ Usuarios de ejemplo (seeder):
 | admin@example.com | password | admin |
 | cliente@example.com | password | client |
 
+## Frontend
+
+La aplicacion incluye una interfaz web (una sola pagina, sin build steps) que consume la API. Solo abre `http://localhost:8000` en el navegador:
+
+```
+php artisan serve
+```
+
+Pantallas: login/registro, dashboard (admin o cliente), catalogo de planes, suscripciones, facturas (pagar/actualizar estado), pagos y reportes (solo admin). El token se guarda en `localStorage` y se envia como `Authorization: Bearer <token>`.
+
 ## Autenticacion
 
 Todas las rutas excepto `/register`, `/login` y ver el catalogo de planes requieren el header `Authorization: Bearer <token>`.
