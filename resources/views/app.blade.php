@@ -381,7 +381,10 @@ async function renderInvoices() {
                 <td class="px-4 py-2.5">${esc(i.payment_reference || '-')}</td>
                 <td class="px-4 py-2.5">${dt(i.paid_at)}</td>
                 <td class="px-4 py-2.5 text-right">
-                    ${!admin && i.status !== 'paid' ? `<button onclick="payInvoice(${i.id})" class="bg-green-600 text-white rounded-lg px-3 py-1.5 text-xs font-semibold">Pagar</button>` : ''}
+                    ${!admin && i.status !== 'paid' ? `<div class="flex gap-2 justify-end">
+                        <button onclick="payInvoice(${i.id})" class="bg-green-600 text-white rounded-lg px-3 py-1.5 text-xs font-semibold">Pagar</button>
+                        <button onclick="payInvoice(${i.id}, 'declined')" class="bg-red-600 text-white rounded-lg px-3 py-1.5 text-xs font-semibold">Simular rechazo</button>
+                    </div>` : ''}
                     ${admin ? `<select onchange="changeInvoiceStatus(${i.id}, this.value)" class="border border-slate-300 rounded-lg px-2 py-1 text-xs">
                         ${['pending','paid','failed'].map(s => `<option value="${s}" ${s === i.status ? 'selected' : ''}>${s}</option>`).join('')}
                     </select>` : ''}
@@ -390,10 +393,12 @@ async function renderInvoices() {
             </tbody></table></div></div>`;
     } catch (err) { box.innerHTML = '<p class="text-red-600">' + esc(err.message) + '</p>'; }
 }
-async function payInvoice(id) {
+async function payInvoice(id, decision) {
     try {
-        await api('/payments', { method: 'POST', body: { invoice_id: id } });
-        showAlert('Pago procesado correctamente.');
+        const body = { invoice_id: id };
+        if (decision) body.simulate_decision = decision;
+        await api('/payments', { method: 'POST', body });
+        showAlert(decision === 'declined' ? 'Pago rechazado (simulado).' : 'Pago procesado correctamente.');
         renderInvoices();
         renderPayments();
     } catch (err) { showAlert(err.message, false); }

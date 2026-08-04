@@ -127,8 +127,18 @@ STRIPE_TEST_CARD=tok_visa
 ```
 
 Variables de simulacion:
-- `PAYMENT_GATEWAY=simulation` — modo simulacion.
+- `PAYMENT_GATEWAY=simulation` — modo simulacion (por defecto).
 - `PAYMENT_FAILURE_RATE=0.2` — 20% de probabilidad de que un pago falle (para probar el flujo de expiracion).
+
+La simulacion replica una pasarela real y puede **procesar** o **rechazar** el cobro. Al pagar una factura puedes forzar la decision con el campo `simulate_decision`:
+
+```json
+POST /api/payments
+{ "invoice_id": 1, "simulate_decision": "approved" }   // cobro procesado
+{ "invoice_id": 1, "simulate_decision": "declined" }   // cobro rechazado (factura failed)
+```
+
+En la interfaz, cada factura pendiente tiene los botones **Pagar** y **Simular rechazo**. Sin el campo, se usa `PAYMENT_FAILURE_RATE`.
 
 ## Tests
 

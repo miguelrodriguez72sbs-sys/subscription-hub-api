@@ -48,6 +48,7 @@ class PaymentController extends Controller
     {
         $request->validate([
             'invoice_id' => 'required|exists:invoices,id',
+            'simulate_decision' => 'nullable|in:approved,declined',
         ]);
 
         $invoice = Invoice::findOrFail($request->invoice_id);
@@ -62,7 +63,7 @@ class PaymentController extends Controller
 
         abort_if($invoice->status === 'paid', 422, 'La factura ya fue pagada.');
 
-        $payment = $this->service->process($invoice);
+        $payment = $this->service->process($invoice, $request->input('simulate_decision'));
 
         return new PaymentResource($payment);
     }

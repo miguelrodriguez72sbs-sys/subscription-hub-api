@@ -61,6 +61,29 @@ class InvoicesAndPaymentsTest extends TestCase
         ]);
     }
 
+    public function test_simulation_can_decline_payment(): void
+    {
+        [, $invoice, $token] = $this->makeClientWithSubscription();
+
+        $this->postJson('/api/payments', [
+            'invoice_id' => $invoice->id,
+            'simulate_decision' => 'declined',
+        ], ['Authorization' => "Bearer $token"])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'failed');
+
+        $this->assertDatabaseHas('invoices', [
+            'id' => $invoice->id,
+            'status' => 'failed',
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'invoice_id' => $invoice->id,
+            'status' => 'failed',
+            'gateway' => 'simulation',
+        ]);
+    }
+
     public function test_client_cannot_view_other_users_invoice(): void
     {
         [, $invoice, $token] = $this->makeClientWithSubscription();
