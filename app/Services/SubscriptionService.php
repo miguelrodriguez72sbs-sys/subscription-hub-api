@@ -1,11 +1,16 @@
 <?php 
 namespace App\Services;
 
+use App\Models\Invoice;
 use App\Models\Subscription;
 use App\Models\MembershipPlan;
 
 class SubscriptionService
 {
+    public function __construct(
+        protected PaymentService $paymentService
+    ) {}
+     
      public function getAll()
     {
         return Subscription::all();
@@ -24,7 +29,7 @@ class SubscriptionService
 
     $endDate = now()->addDays($plan->duration_days);
 
-    return Subscription::create([
+    $subscription = Subscription::create([
         'user_id' => $data['user_id'],
         'membership_plan_id' => $data['membership_plan_id'],
         'status' => 'active',
@@ -32,6 +37,16 @@ class SubscriptionService
         'ends_at' => $endDate,
         'next_billing_date' => $endDate,
     ]);
+
+    $invoice = Invoice::create([
+        'subscription_id' => $subscription->id,
+        'amount' => $plan->price,
+        'status' => 'pending',
+    ]);
+
+    $this->paymentService->process($invoice);
+
+    return $subscription;
 }
 
     public function find(int $id)

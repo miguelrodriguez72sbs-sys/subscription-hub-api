@@ -57,6 +57,8 @@ Todas las rutas excepto `/register`, `/login` y ver el catalogo de planes requie
 | GET / POST | `/api/subscriptions` | Listar / crear suscripcion |
 | GET / PUT / DELETE | `/api/subscriptions/{id}` | Ver / actualizar / cancelar |
 
+Al crear una suscripcion se genera la **primera factura y se cobra inmediatamente** (pago inicial). Los periodos siguientes se cobran automaticamente en cada `next_billing_date` con el comando de renovacion.
+
 ### Facturas (Invoices)
 | Metodo | Ruta | Descripcion |
 | --- | --- | --- |

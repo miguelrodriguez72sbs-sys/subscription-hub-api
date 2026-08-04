@@ -33,6 +33,30 @@ class SubscriptionFlowTest extends TestCase
         ]);
     }
 
+    public function test_subscribing_creates_initial_invoice_and_payment(): void
+    {
+        $client = User::factory()->create(['role' => 'client']);
+        $plan = MembershipPlan::create(['name' => 'Pro', 'price' => 19.99, 'duration_days' => 30]);
+
+        $token = $client->createToken('auth_token')->plainTextToken;
+
+        $this->postJson('/api/subscriptions', [
+            'membership_plan_id' => $plan->id,
+        ], ['Authorization' => "Bearer $token"])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('invoices', [
+            'subscription_id' => 1,
+            'amount' => 19.99,
+            'status' => 'paid',
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'status' => 'succeeded',
+            'gateway' => 'simulation',
+        ]);
+    }
+
     public function test_admin_can_subscribe_for_a_specific_user(): void
     {
         $client = User::factory()->create(['role' => 'client']);
