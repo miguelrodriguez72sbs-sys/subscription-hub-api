@@ -15,8 +15,8 @@ class SubscriptionRequest extends FormRequest
     public function rules(): array
     {
         return [
-    'user_id' => 'required|exists:users,id',
-    'membership_plan_id' => 'required|exists:membership_plans,id'
-];
+            'user_id' => 'nullable|exists:users,id',
+            'membership_plan_id' => 'required|exists:membership_plans,id',
+        ];
     }
 }

@@ -29,7 +29,9 @@ class SubscriptionController extends Controller
     {
         $data = $request->validated();
 
-        if (! $request->user()->isAdmin()) {
+        if ($request->user()->isAdmin()) {
+            $data['user_id'] = $data['user_id'] ?? $request->user()->id;
+        } else {
             $data['user_id'] = $request->user()->id;
         }
 
