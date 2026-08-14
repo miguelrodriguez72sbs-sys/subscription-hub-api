@@ -14,6 +14,9 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'role' => $this->role,
+            'subscriptions_count' => $this->whenLoaded('subscriptions', function () {
+                return (int) $this->subscriptions_count;
+            }),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\MembershipPlanController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SubscriptionController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -34,6 +35,9 @@ Route::middleware('auth:sanctum')->group(function () {
             ->only(['store', 'update', 'destroy']);
 
         Route::patch('invoices/{id}/status', [InvoiceController::class, 'updateStatus']);
+
+        Route::get('users', [UserController::class, 'index']);
+        Route::patch('users/{id}/role', [UserController::class, 'updateRole']);
 
         Route::get('reports', [ReportController::class, 'index']);
         Route::get('reports/revenue', [ReportController::class, 'revenue']);

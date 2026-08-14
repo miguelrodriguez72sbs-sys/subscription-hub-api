@@ -79,4 +79,36 @@ class RolesTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1);
     }
+
+    public function test_client_cannot_list_users(): void
+    {
+        $this->getJson('/api/users', ['Authorization' => 'Bearer '.$this->clientToken()])
+            ->assertStatus(403);
+    }
+
+    public function test_admin_can_list_users(): void
+    {
+        $this->getJson('/api/users', ['Authorization' => 'Bearer '.$this->adminToken()])
+            ->assertOk();
+    }
+
+    public function test_admin_can_promote_client_to_admin(): void
+    {
+        $target = User::factory()->create(['role' => 'client']);
+
+        $this->patchJson('/api/users/'.$target->id.'/role', ['role' => 'admin'], ['Authorization' => 'Bearer '.$this->adminToken()])
+            ->assertOk()
+            ->assertJsonPath('user.role', 'admin');
+
+        $this->assertDatabaseHas('users', ['id' => $target->id, 'role' => 'admin']);
+    }
+
+    public function test_admin_cannot_demote_himself(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $token = $admin->createToken('auth_token')->plainTextToken;
+
+        $this->patchJson('/api/users/'.$admin->id.'/role', ['role' => 'client'], ['Authorization' => "Bearer $token"])
+            ->assertStatus(422);
+    }
 }
