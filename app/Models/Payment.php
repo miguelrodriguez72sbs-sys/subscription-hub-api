@@ -14,6 +14,7 @@ class Payment extends Model
         'amount',
         'status',
         'gateway',
+        'payment_method',
         'reference',
         'payload',
     ];

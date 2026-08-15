@@ -24,6 +24,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('subscriptions', SubscriptionController::class);
 
+    Route::post('subscriptions/{id}/change-plan', [SubscriptionController::class, 'changePlan']);
+
     Route::apiResource('invoices', InvoiceController::class)
         ->only(['index', 'show']);
 

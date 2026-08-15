@@ -16,6 +16,12 @@
         .status-cancelled, .status-client { background: rgba(113, 113, 122, .2); color: #a1a1aa; }
         .status-expired, .status-failed { background: rgba(239, 68, 68, .15); color: #f87171; }
         input:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px #121212 inset; -webkit-text-fill-color: #fff; }
+        .payment-method { display: flex; align-items: center; gap: .75rem; background: #121212; border: 1px solid rgba(255,255,255,.08); border-radius: .75rem; padding: .75rem 1rem; cursor: pointer; transition: border-color .2s, background .2s; }
+        .payment-method:hover { background: #1a1a1a; }
+        .payment-method.selected { border-color: #1db954; background: rgba(29,185,84,.08); }
+        .checkout-input { width: 100%; background: #121212; border: 1px solid rgba(255,255,255,.1); border-radius: .5rem; padding: .6rem .9rem; font-size: .875rem; color: #fff; outline: none; }
+        .checkout-input:focus { border-color: #1db954; }
+        .checkout-input::placeholder { color: #71717a; }
     </style>
 </head>
 <body class="bg-[#121212] text-white min-h-screen">
@@ -149,6 +155,52 @@
         </div>
     </div>
 
+    <!-- CHECKOUT MODAL (cambio de plan) -->
+    <div id="checkout-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div onclick="closeCheckout()" class="absolute inset-0 bg-black/80"></div>
+        <div class="relative w-full max-w-md bg-[#181818] border border-white/10 rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto scroll-thin">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-bold">Cambiar de plan</h3>
+                <button onclick="closeCheckout()" class="text-zinc-500 hover:text-white transition text-2xl leading-none">&times;</button>
+            </div>
+
+            <div id="checkout-summary" class="bg-[#121212] border border-white/5 rounded-xl p-4 mb-5 space-y-3"></div>
+
+            <p class="text-sm font-semibold mb-2.5">Metodo de pago</p>
+            <div class="space-y-2 mb-4">
+                <label class="payment-method selected" data-method="card" onclick="selectMethod('card')">
+                    <input type="radio" name="checkout-method" value="card" checked class="accent-[#1db954]">
+                    <span class="font-semibold text-sm">Tarjeta de credito/debito</span>
+                </label>
+                <label class="payment-method" data-method="paypal" onclick="selectMethod('paypal')">
+                    <input type="radio" name="checkout-method" value="paypal" class="accent-[#1db954]">
+                    <span class="font-semibold text-sm">PayPal</span>
+                </label>
+                <label class="payment-method" data-method="bank_transfer" onclick="selectMethod('bank_transfer')">
+                    <input type="radio" name="checkout-method" value="bank_transfer" class="accent-[#1db954]">
+                    <span class="font-semibold text-sm">Transferencia bancaria</span>
+                </label>
+            </div>
+
+            <div id="card-fields" class="space-y-3 mb-4">
+                <input id="cc-number" type="text" placeholder="Numero de tarjeta" maxlength="19" class="checkout-input">
+                <div class="grid grid-cols-2 gap-3">
+                    <input id="cc-expiry" type="text" placeholder="MM/AA" maxlength="5" class="checkout-input">
+                    <input id="cc-cvc" type="text" placeholder="CVC" maxlength="4" class="checkout-input">
+                </div>
+            </div>
+
+            <label class="flex items-center gap-2 text-xs text-zinc-400 mb-5 cursor-pointer select-none">
+                <input id="checkout-simulate" type="checkbox" class="accent-[#1db954]">
+                Simular rechazo del pago
+            </label>
+
+            <button id="checkout-pay" onclick="confirmCheckout()" class="w-full bg-[#1db954] hover:bg-[#1ed760] text-black font-bold rounded-full py-3 transition">Pagar</button>
+            <p id="checkout-error" class="hidden mt-4 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3"></p>
+            <p id="checkout-ok" class="hidden mt-4 text-sm text-[#1ed760] bg-[#1db954]/10 border border-[#1db954]/25 rounded-lg p-3"></p>
+        </div>
+    </div>
+
 <script>
 const API = '/api';
 let token = localStorage.getItem('sh_token') || null;
@@ -167,6 +219,7 @@ function fmt(n) { return '$' + Number(n).toFixed(2); }
 function dt(s) { return s ? String(s).slice(0, 10) : '-'; }
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function badge(status) { return `<span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold status-${esc(status)}">${esc(status)}</span>`; }
+function paymentMethodLabel(m) { return { card: 'Tarjeta', paypal: 'PayPal', bank_transfer: 'Transferencia' }[m] || m || '-'; }
 
 function showAlert(msg, ok = true) {
     const a = $('alert');
@@ -489,23 +542,32 @@ async function renderAppPlans(app, plans, admin) {
         ${admin ? `<div class="mb-6"><button onclick="newPlanForm('${esc(app)}')" class="bg-white text-black hover:bg-white/80 px-5 py-2.5 rounded-full text-sm font-bold transition">+ Nuevo plan</button></div>` : ''}
         <div id="plan-form-wrap"></div>
         ${plans.length
-            ? `<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">${plans.map(p => planCard(p, admin)).join('')}</div>`
+            ? `<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">${plans.map(p => planCard(p, admin, active)).join('')}</div>`
             : '<div class="bg-[#181818] border border-white/5 rounded-xl p-8 text-center text-zinc-400">Sin planes para esta aplicacion.</div>'}
     `;
 }
 
-function planCard(p, admin) {
+function planCard(p, admin, active) {
     const meta = appMeta(p.application || 'Otros');
+    const isCurrent = active && active.plan_id === p.id;
+    let button = '';
+    if (!admin) {
+        if (isCurrent) {
+            button = `<span class="absolute bottom-2 right-2 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[#1db954] bg-black/70 border border-[#1db954]/40 rounded-full px-3 py-1.5">Plan actual</span>`;
+        } else {
+            const title = active ? 'Cambiar plan' : 'Suscribirse';
+            button = `<button onclick="planAction(${p.id})" class="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-[#1db954] text-black flex items-center justify-center shadow-lg shadow-black/40 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105 hover:bg-[#1ed760]" title="${title}">
+                ${I.play}
+            </button>`;
+        }
+    }
     return `
     <div class="group bg-[#181818] hover:bg-[#282828] border border-white/5 rounded-xl p-4 transition-all duration-300 hover:-translate-y-0.5">
         <div class="relative mb-4">
             <div class="h-28 rounded-lg bg-gradient-to-br ${meta.gradient} flex items-center justify-center overflow-hidden">
                 <div class="w-12 h-12 rounded-xl bg-black/30 border border-white/10 flex items-center justify-center text-xl font-black text-white">${esc(meta.glyph)}</div>
             </div>
-            ${!admin ? `
-            <button onclick="subscribe(${p.id})" class="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-[#1db954] text-black flex items-center justify-center shadow-lg shadow-black/40 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105 hover:bg-[#1ed760]" title="Suscribirse">
-                ${I.play}
-            </button>` : ''}
+            ${button}
         </div>
         <h3 class="font-bold truncate">${esc(p.name)}</h3>
         <p class="text-sm text-zinc-400 line-clamp-2 mt-1 min-h-10">${esc(p.description || 'Sin descripcion')}</p>
@@ -583,6 +645,98 @@ async function cancelPlanSub(id) {
     if (!confirm('¿Cancelar esta suscripcion?')) return;
     try { await api('/subscriptions/' + id, { method: 'DELETE' }); showAlert('Suscripcion cancelada.'); renderPlans(); }
     catch (err) { showAlert(err.message, false); }
+}
+
+/* ---------- CHANGE PLAN / CHECKOUT ---------- */
+let checkout = { sub: null, plan: null, currentPlan: null, difference: 0, busy: false };
+
+async function planAction(planId) {
+    const plan = plansCache.find(x => x.id === planId);
+    if (!plan) return;
+    let active = null;
+    try {
+        const s = await api('/subscriptions');
+        active = (s.data ?? s).find(x => x.application === plan.application && x.status === 'active');
+    } catch (err) { showAlert(err.message, false); return; }
+    if (active) openCheckout(active, plan);
+    else subscribe(planId);
+}
+
+function openCheckout(active, plan) {
+    const currentPlan = plansCache.find(x => x.id === active.plan_id);
+    if (!currentPlan) return;
+    const up = Number(plan.price) > Number(currentPlan.price);
+    checkout = {
+        sub: active,
+        plan,
+        currentPlan,
+        difference: Math.max(0, Number(plan.price) - Number(currentPlan.price)),
+        busy: false,
+    };
+    $('checkout-summary').innerHTML = `
+        <div class="flex items-center justify-between text-sm gap-3">
+            <div>
+                <p class="text-xs text-zinc-500">Plan actual</p>
+                <p class="font-semibold">${esc(currentPlan.name)}</p>
+                <p class="text-xs text-zinc-400">${fmt(currentPlan.price)}</p>
+            </div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5 text-[#1db954] shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12l-7.5 7.5M21 12H3"/></svg>
+            <div class="text-right">
+                <p class="text-xs text-zinc-500">Nuevo plan</p>
+                <p class="font-semibold">${esc(plan.name)}</p>
+                <p class="text-xs text-zinc-400">${fmt(plan.price)}</p>
+            </div>
+        </div>
+        <div class="border-t border-white/5 pt-3 flex items-center justify-between">
+            <p class="text-sm text-zinc-400">${up ? 'Diferencia a pagar' : 'Cambio a un plan menor'}</p>
+            <p class="font-bold ${up ? 'text-[#1ed760]' : 'text-zinc-300'}">${up ? fmt(checkout.difference) : 'Sin cargo'}</p>
+        </div>`;
+    const btn = $('checkout-pay');
+    btn.innerHTML = up ? 'Pagar ' + fmt(checkout.difference) : 'Confirmar cambio de plan';
+    btn.disabled = false;
+    $('checkout-error').classList.add('hidden');
+    $('checkout-ok').classList.add('hidden');
+    $('checkout-simulate').checked = false;
+    selectMethod('card');
+    $('checkout-modal').classList.remove('hidden');
+}
+
+function closeCheckout() {
+    $('checkout-modal').classList.add('hidden');
+}
+
+function selectMethod(method) {
+    document.querySelectorAll('.payment-method').forEach(el => el.classList.toggle('selected', el.dataset.method === method));
+    const radio = document.querySelector(`input[name="checkout-method"][value="${method}"]`);
+    if (radio) radio.checked = true;
+    $('card-fields').classList.toggle('hidden', method !== 'card');
+}
+
+async function confirmCheckout() {
+    if (checkout.busy) return;
+    checkout.busy = true;
+    const btn = $('checkout-pay');
+    btn.disabled = true;
+    btn.innerHTML = 'Procesando...';
+    $('checkout-error').classList.add('hidden');
+    try {
+        const body = {
+            membership_plan_id: checkout.plan.id,
+            payment_method: document.querySelector('input[name="checkout-method"]:checked').value,
+        };
+        if ($('checkout-simulate').checked) body.simulate_decision = 'declined';
+        const res = await api('/subscriptions/' + checkout.sub.id + '/change-plan', { method: 'POST', body });
+        $('checkout-ok').textContent = res.message;
+        $('checkout-ok').classList.remove('hidden');
+        setTimeout(() => { closeCheckout(); renderPlans(); }, 1600);
+    } catch (err) {
+        $('checkout-error').textContent = err.message;
+        $('checkout-error').classList.remove('hidden');
+        btn.innerHTML = checkout.difference > 0 ? 'Pagar ' + fmt(checkout.difference) : 'Confirmar cambio de plan';
+    } finally {
+        checkout.busy = false;
+        btn.disabled = false;
+    }
 }
 
 /* ---------- SUBSCRIPTIONS ---------- */
@@ -699,13 +853,14 @@ async function renderPayments() {
         box.innerHTML = `<div class="bg-[#181818] border border-white/5 rounded-xl overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead class="bg-black/30 text-left text-zinc-400 uppercase tracking-wider text-[11px]"><tr>
                 <th class="px-5 py-3.5">#</th><th class="px-5 py-3.5">Factura</th><th class="px-5 py-3.5">Monto</th>
-                <th class="px-5 py-3.5">Estado</th><th class="px-5 py-3.5">Pasarela</th><th class="px-5 py-3.5">Referencia</th><th class="px-5 py-3.5">Fecha</th>
+                <th class="px-5 py-3.5">Estado</th><th class="px-5 py-3.5">Pasarela</th><th class="px-5 py-3.5">Metodo</th><th class="px-5 py-3.5">Referencia</th><th class="px-5 py-3.5">Fecha</th>
             </tr></thead><tbody>
             ${items.map(p => `<tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.03]">
                 <td class="px-5 py-3 text-zinc-400">${p.id}</td><td class="px-5 py-3 text-zinc-400">#${p.invoice_id}</td>
                 <td class="px-5 py-3 font-bold">${fmt(p.amount)}</td>
                 <td class="px-5 py-3">${badge(p.status)}</td>
                 <td class="px-5 py-3">${esc(p.gateway)}</td>
+                <td class="px-5 py-3 text-zinc-400">${esc(paymentMethodLabel(p.payment_method))}</td>
                 <td class="px-5 py-3 text-zinc-400">${esc(p.reference || '-')}</td>
                 <td class="px-5 py-3 text-zinc-400">${dt(p.created_at)}</td>
             </tr>`).join('')}
