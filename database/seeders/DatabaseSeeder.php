@@ -13,19 +13,23 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::create([
-            'name' => 'Administrador',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('password'),
-            'role' => 'admin',
-        ]);
+        $admin = User::updateOrCreate(
+            ['email' => 'admin@example.com'],
+            [
+                'name' => 'Administrador',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+            ]
+        );
 
-        $client = User::create([
-            'name' => 'Cliente Demo',
-            'email' => 'cliente@example.com',
-            'password' => Hash::make('password'),
-            'role' => 'client',
-        ]);
+        $client = User::updateOrCreate(
+            ['email' => 'cliente@example.com'],
+            [
+                'name' => 'Cliente Demo',
+                'password' => Hash::make('password'),
+                'role' => 'client',
+            ]
+        );
 
         $apps = [
             'Netflix' => [
@@ -54,27 +58,33 @@ class DatabaseSeeder extends Seeder
 
         foreach ($apps as $application => $plans) {
             foreach ($plans as $planData) {
-                MembershipPlan::create($planData + ['application' => $application]);
+                MembershipPlan::updateOrCreate(
+                    ['application' => $application, 'name' => $planData['name']],
+                    $planData + ['application' => $application]
+                );
             }
         }
 
         $proPlan = MembershipPlan::where('application', 'Netflix')->where('name', 'Estandar')->first();
 
-        $subscription = Subscription::create([
-            'user_id' => $client->id,
-            'membership_plan_id' => $proPlan->id,
-            'status' => 'active',
-            'starts_at' => now()->subDays(10),
-            'ends_at' => now()->addDays(20),
-            'next_billing_date' => now()->addDays(20),
-        ]);
+        $subscription = Subscription::firstOrCreate(
+            ['user_id' => $client->id, 'membership_plan_id' => $proPlan->id],
+            [
+                'status' => 'active',
+                'starts_at' => now()->subDays(10),
+                'ends_at' => now()->addDays(20),
+                'next_billing_date' => now()->addDays(20),
+            ]
+        );
 
-        Invoice::create([
-            'subscription_id' => $subscription->id,
-            'amount' => $proPlan->price,
-            'status' => 'paid',
-            'payment_reference' => 'SIM-XXXXYYYYZZ',
-            'paid_at' => now()->subDays(10),
-        ]);
+        Invoice::firstOrCreate(
+            ['subscription_id' => $subscription->id],
+            [
+                'amount' => $proPlan->price,
+                'status' => 'paid',
+                'payment_reference' => 'SIM-XXXXYYYYZZ',
+                'paid_at' => now()->subDays(10),
+            ]
+        );
     }
 }
