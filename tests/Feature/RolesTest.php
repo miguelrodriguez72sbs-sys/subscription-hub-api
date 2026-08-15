@@ -49,6 +49,21 @@ class RolesTest extends TestCase
         $this->getJson('/api/membership-plans')->assertOk();
     }
 
+    public function test_membership_plan_returns_application(): void
+    {
+        MembershipPlan::create([
+            'name' => 'Premium',
+            'application' => 'Netflix',
+            'description' => '4K',
+            'price' => 15.99,
+            'duration_days' => 30,
+        ]);
+
+        $this->getJson('/api/membership-plans')
+            ->assertOk()
+            ->assertJsonPath('data.0.application', 'Netflix');
+    }
+
     public function test_client_only_sees_own_subscriptions(): void
     {
         $client = User::factory()->create(['role' => 'client']);

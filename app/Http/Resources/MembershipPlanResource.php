@@ -12,6 +12,7 @@ class MembershipPlanResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'application' => $this->application,
             'description' => $this->description,
             'price' => $this->price,
             'duration_days' => $this->duration_days,

@@ -27,17 +27,38 @@ class DatabaseSeeder extends Seeder
             'role' => 'client',
         ]);
 
-        $plans = [
-            ['name' => 'Basico', 'description' => 'Plan mensual basico', 'price' => 9.99, 'duration_days' => 30],
-            ['name' => 'Pro', 'description' => 'Plan mensual profesional', 'price' => 19.99, 'duration_days' => 30],
-            ['name' => 'Premium', 'description' => 'Plan mensual premium', 'price' => 29.99, 'duration_days' => 30],
+        $apps = [
+            'Netflix' => [
+                ['name' => 'Basica', 'description' => 'Calidad estandar (720p), 1 pantalla', 'price' => 6.99, 'duration_days' => 30],
+                ['name' => 'Estandar', 'description' => 'Calidad Full HD, 2 pantallas', 'price' => 10.99, 'duration_days' => 30],
+                ['name' => 'Premium', 'description' => 'Calidad 4K UHD, 4 pantallas', 'price' => 15.99, 'duration_days' => 30],
+            ],
+            'Spotify' => [
+                ['name' => 'Individual', 'description' => 'Musica en streaming para 1 cuenta', 'price' => 5.99, 'duration_days' => 30],
+                ['name' => 'Duo', 'description' => '2 cuentas premium', 'price' => 8.99, 'duration_days' => 30],
+                ['name' => 'Familiar', 'description' => 'Hasta 6 cuentas', 'price' => 11.99, 'duration_days' => 30],
+            ],
+            'YouTube' => [
+                ['name' => 'Individual', 'description' => 'YouTube sin anuncios + YouTube Music', 'price' => 6.99, 'duration_days' => 30],
+                ['name' => 'Familiar', 'description' => 'Hasta 5 miembros', 'price' => 11.99, 'duration_days' => 30],
+            ],
+            'Amazon' => [
+                ['name' => 'Prime', 'description' => 'Envio rapido + Prime Video + Music', 'price' => 4.99, 'duration_days' => 30],
+                ['name' => 'Prime Anual', 'description' => 'Pago anual con descuento', 'price' => 49.99, 'duration_days' => 365],
+            ],
+            'Disney' => [
+                ['name' => 'Normal', 'description' => 'Calidad Full HD, 2 pantallas', 'price' => 7.99, 'duration_days' => 30],
+                ['name' => 'Premium', 'description' => 'Calidad 4K, 4 pantallas', 'price' => 11.99, 'duration_days' => 30],
+            ],
         ];
 
-        foreach ($plans as $planData) {
-            MembershipPlan::create($planData);
+        foreach ($apps as $application => $plans) {
+            foreach ($plans as $planData) {
+                MembershipPlan::create($planData + ['application' => $application]);
+            }
         }
 
-        $proPlan = MembershipPlan::where('name', 'Pro')->first();
+        $proPlan = MembershipPlan::where('application', 'Netflix')->where('name', 'Estandar')->first();
 
         $subscription = Subscription::create([
             'user_id' => $client->id,

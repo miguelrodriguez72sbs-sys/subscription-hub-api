@@ -92,6 +92,29 @@ class InvoicesAndPaymentsTest extends TestCase
             ->assertOk();
     }
 
+    public function test_client_can_download_own_invoice_pdf(): void
+    {
+        [, $invoice, $token] = $this->makeClientWithSubscription();
+
+        $response = $this->get("/api/invoices/{$invoice->id}/pdf", ['Authorization' => "Bearer $token"]);
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_admin_can_download_any_invoice_pdf(): void
+    {
+        [, $invoice] = $this->makeClientWithSubscription();
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $adminToken = $admin->createToken('auth_token')->plainTextToken;
+
+        $this->get("/api/invoices/{$invoice->id}/pdf", ['Authorization' => "Bearer $adminToken"])
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+    }
+
     public function test_admin_can_update_invoice_status(): void
     {
         [$client, $invoice, $token] = $this->makeClientWithSubscription();

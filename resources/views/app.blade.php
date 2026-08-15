@@ -160,6 +160,7 @@ const I = {
     play: '<svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 ml-0.5"><path d="M8 5v14l11-7z"/></svg>',
     note: '<svg viewBox="0 0 24 24" fill="currentColor" class="w-14 h-14 text-white/60"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>',
     chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>',
+    pdf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>',
 };
 
 function fmt(n) { return '$' + Number(n).toFixed(2); }
@@ -269,7 +270,7 @@ function toggleSidebar(force) {
 
 const META = {
     dashboard: ['Dashboard', 'Resumen general de la plataforma'],
-    plans: ['Planes', 'Elige el plan que se adapta a ti'],
+    plans: ['Planes', 'Tus aplicaciones de streaming'],
     subscriptions: ['Suscripciones', 'Historial de suscripciones'],
     invoices: ['Facturas', 'Historial de facturas y cobros'],
     payments: ['Pagos', 'Historial de pagos procesados'],
@@ -333,7 +334,7 @@ async function renderDashboard() {
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-xs uppercase tracking-widest text-[#1db954] font-bold mb-1">Plan activo</p>
-                        <h3 class="text-xl md:text-2xl font-bold truncate">${esc(s.plan)}</h3>
+                        <h3 class="text-xl md:text-2xl font-bold truncate">${planLabel(s)}</h3>
                         <p class="text-sm text-zinc-400 mt-1">Inicio ${dt(s.starts_at)} &middot; Fin ${dt(s.ends_at)} &middot; Proxima facturacion ${dt(s.next_billing_date)}</p>
                     </div>
                     ${badge(s.status)}
@@ -362,40 +363,144 @@ function listBlock(title, items, rowFn) {
 }
 function subRow(s) {
     return `<tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.03]">
-        <td class="px-5 py-3 text-zinc-400">#${s.id}</td><td class="px-5 py-3 font-semibold">${esc(s.plan)}</td>
+        <td class="px-5 py-3 text-zinc-400">#${s.id}</td><td class="px-5 py-3 font-semibold">${planLabel(s)}</td>
         <td class="px-5 py-3">${badge(s.status)}</td><td class="px-5 py-3 text-zinc-400">${dt(s.next_billing_date)}</td>
     </tr>`;
 }
 function invRow(i) {
     return `<tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.03]">
-        <td class="px-5 py-3 text-zinc-400">#${i.id}</td><td class="px-5 py-3 font-semibold">${esc(i.plan)}</td>
+        <td class="px-5 py-3 text-zinc-400">#${i.id}</td><td class="px-5 py-3 font-semibold">${planLabel(i)}</td>
         <td class="px-5 py-3 font-bold">${fmt(i.amount)}</td><td class="px-5 py-3">${badge(i.status)}</td>
     </tr>`;
 }
 
 /* ---------- PLANS ---------- */
+const APPS = {
+    Netflix: { gradient: 'from-red-600 via-red-800 to-black', glyph: 'N' },
+    Spotify: { gradient: 'from-green-500 via-green-800 to-black', glyph: 'S' },
+    YouTube: { gradient: 'from-red-500 via-red-800 to-black', glyph: 'Y' },
+    Amazon: { gradient: 'from-amber-500 via-orange-800 to-black', glyph: 'A' },
+    Disney: { gradient: 'from-blue-500 via-indigo-800 to-black', glyph: 'D' },
+};
+const DEFAULT_APP = { gradient: 'from-zinc-600 via-zinc-800 to-black', glyph: '?' };
+function appMeta(app) { return APPS[app] || DEFAULT_APP; }
+function appBadge(app) {
+    if (!app) return '<span class="text-zinc-500 text-xs">-</span>';
+    const meta = appMeta(app);
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/5 border border-white/10 text-zinc-200">
+        <span class="w-2 h-2 rounded-full bg-gradient-to-br ${meta.gradient}"></span>${esc(app)}
+    </span>`;
+}
+function planLabel(p) {
+    return p.application ? esc(p.application) + ' &middot; ' + esc(p.plan) : esc(p.plan);
+}
+
+let plansApp = null;
+let plansCache = [];
+
 async function renderPlans() {
     const box = $('tab-plans');
     box.innerHTML = '<p class="text-zinc-500">Cargando...</p>';
     try {
         const plans = await api('/membership-plans');
-        localStorage.setItem('sh_plans_cache', JSON.stringify(plans.data ?? plans));
+        plansCache = plans.data ?? plans;
+        localStorage.setItem('sh_plans_cache', JSON.stringify(plansCache));
         const admin = user.role === 'admin';
-        box.innerHTML = `
-            ${admin ? `<div class="mb-6"><button onclick="newPlanForm()" class="bg-white text-black hover:bg-white/80 px-5 py-2.5 rounded-full text-sm font-bold transition">+ Nuevo plan</button></div>` : ''}
-            <div id="plan-form-wrap"></div>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                ${(plans.data ?? plans).map(p => planCard(p, admin)).join('')}
-            </div>`;
+
+        if (plansApp === null) {
+            let subs = [];
+            if (!admin) {
+                const s = await api('/subscriptions');
+                subs = s.data ?? s;
+            }
+            const apps = [...new Set(plansCache.map(p => p.application || 'Otros').filter(Boolean))];
+            box.innerHTML = `
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+                    <p class="text-zinc-400 text-sm">Aplicaciones de streaming y sus planes</p>
+                    ${admin ? `<button onclick="newPlanForm('Otros')" class="bg-white text-black hover:bg-white/80 px-5 py-2.5 rounded-full text-sm font-bold transition">+ Nuevo plan</button>` : ''}
+                </div>
+                <div id="plan-form-wrap"></div>
+                ${apps.length
+                    ? `<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">${apps.map(a => appCard(a, plansCache.filter(p => (p.application || 'Otros') === a), admin, subs)).join('')}</div>`
+                    : '<div class="bg-[#181818] border border-white/5 rounded-xl p-8 text-center text-zinc-400">No hay planes disponibles.</div>'}
+            `;
+        } else {
+            const appPlans = plansCache.filter(p => (p.application || 'Otros') === plansApp);
+            box.innerHTML = await renderAppPlans(plansApp, appPlans, admin);
+        }
     } catch (err) { box.innerHTML = '<p class="text-red-400">' + esc(err.message) + '</p>'; }
 }
 
+function appCard(app, plans, admin, subs) {
+    const meta = appMeta(app);
+    const active = !admin && subs.some(s => s.application === app && s.status === 'active');
+    return `
+    <button onclick="openApp('${esc(app)}')" class="group text-left bg-[#181818] hover:bg-[#282828] border border-white/5 rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-0.5">
+        <div class="relative h-36 bg-gradient-to-br ${meta.gradient} flex items-center justify-center">
+            <div class="w-16 h-16 rounded-2xl bg-black/30 border border-white/10 flex items-center justify-center text-3xl font-black text-white shadow-lg">${esc(meta.glyph)}</div>
+            ${active ? `<span class="absolute top-3 right-3 inline-block w-2.5 h-2.5 rounded-full bg-[#1db954] shadow-[0_0_10px_rgba(29,185,84,.8)]" title="Suscripcion activa"></span>` : ''}
+            <span class="absolute bottom-3 left-3 text-white/80 text-[11px] font-bold uppercase tracking-widest">${plans.length} planes</span>
+        </div>
+        <div class="p-4">
+            <h3 class="font-bold text-lg">${esc(app)}</h3>
+            <p class="text-sm text-zinc-400 mt-0.5">${admin ? 'Gestionar planes' : active ? 'Suscripcion activa' : 'Explorar planes'}</p>
+            <span class="mt-3 inline-flex items-center gap-1.5 text-[#1db954] text-sm font-semibold">
+                ${admin ? 'Gestionar' : 'Ver planes'}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 transition-transform group-hover:translate-x-0.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            </span>
+        </div>
+    </button>`;
+}
+
+function openApp(app) {
+    plansApp = app || null;
+    renderPlans();
+}
+
+async function renderAppPlans(app, plans, admin) {
+    const meta = appMeta(app);
+    let subs = [];
+    let active = null;
+    if (!admin) {
+        const s = await api('/subscriptions');
+        subs = s.data ?? s;
+        active = subs.find(x => x.application === app && x.status === 'active');
+    }
+    return `
+        <div class="mb-6 flex flex-wrap items-center gap-3">
+            <button onclick="openApp(null)" class="bg-[#181818] hover:bg-[#282828] border border-white/5 rounded-full p-2 transition" title="Volver">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+            </button>
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${meta.gradient} flex items-center justify-center text-xl font-black text-white">${esc(meta.glyph)}</div>
+            <div>
+                <h2 class="text-xl md:text-2xl font-bold">${esc(app)}</h2>
+                <p class="text-sm text-zinc-400">Elige el plan que se adapta a ti</p>
+            </div>
+            ${active ? `<span class="ml-auto">${badge('active')}</span>` : ''}
+        </div>
+        ${!admin && active ? `
+        <div class="bg-[#1db954]/10 border border-[#1db954]/25 rounded-xl px-5 py-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <p class="text-sm font-semibold text-[#1ed760]">Suscripcion activa</p>
+                <p class="text-sm text-zinc-300 mt-0.5">Plan ${esc(active.plan)} &middot; Proxima facturacion ${dt(active.next_billing_date)}</p>
+            </div>
+            <button onclick="cancelPlanSub(${active.id})" class="shrink-0 border border-red-500/40 text-red-400 hover:bg-red-500/10 rounded-full px-4 py-1.5 text-xs font-semibold transition">Cancelar</button>
+        </div>` : ''}
+        ${admin ? `<div class="mb-6"><button onclick="newPlanForm('${esc(app)}')" class="bg-white text-black hover:bg-white/80 px-5 py-2.5 rounded-full text-sm font-bold transition">+ Nuevo plan</button></div>` : ''}
+        <div id="plan-form-wrap"></div>
+        ${plans.length
+            ? `<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">${plans.map(p => planCard(p, admin)).join('')}</div>`
+            : '<div class="bg-[#181818] border border-white/5 rounded-xl p-8 text-center text-zinc-400">Sin planes para esta aplicacion.</div>'}
+    `;
+}
+
 function planCard(p, admin) {
+    const meta = appMeta(p.application || 'Otros');
     return `
     <div class="group bg-[#181818] hover:bg-[#282828] border border-white/5 rounded-xl p-4 transition-all duration-300 hover:-translate-y-0.5">
         <div class="relative mb-4">
-            <div class="h-28 rounded-lg bg-gradient-to-br from-emerald-500/40 via-teal-600/30 to-[#1db954]/10 flex items-center justify-center overflow-hidden">
-                ${I.note}
+            <div class="h-28 rounded-lg bg-gradient-to-br ${meta.gradient} flex items-center justify-center overflow-hidden">
+                <div class="w-12 h-12 rounded-xl bg-black/30 border border-white/10 flex items-center justify-center text-xl font-black text-white">${esc(meta.glyph)}</div>
             </div>
             ${!admin ? `
             <button onclick="subscribe(${p.id})" class="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-[#1db954] text-black flex items-center justify-center shadow-lg shadow-black/40 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:scale-105 hover:bg-[#1ed760]" title="Suscribirse">
@@ -415,8 +520,8 @@ function planCard(p, admin) {
     </div>`;
 }
 
-function newPlanForm() {
-    $('plan-form-wrap').innerHTML = planFormHtml();
+function newPlanForm(app) {
+    $('plan-form-wrap').innerHTML = planFormHtml({ application: app || '' });
 }
 function editPlanForm(id) {
     const p = (JSON.parse(localStorage.getItem('sh_plans_cache') || '[]')).find(x => x.id === id) || {};
@@ -424,30 +529,40 @@ function editPlanForm(id) {
 }
 function planFormHtml(p = {}) {
     const inp = 'w-full bg-[#121212] border border-white/10 rounded-lg px-3 py-2 text-sm placeholder-zinc-500 focus:outline-none focus:border-[#1db954]';
+    const appList = [...new Set(['Netflix', 'Spotify', 'YouTube', 'Amazon', 'Disney', 'Otros', ...plansCache.map(x => x.application || 'Otros')])];
     return `<div class="bg-[#181818] border border-white/5 rounded-xl p-5 mb-6">
         <h3 class="font-bold mb-4">${p.id ? 'Editar plan' : 'Nuevo plan'}</h3>
         <div class="grid md:grid-cols-2 gap-3">
-            <input id="pf-name" placeholder="Nombre" value="${esc(p.name || '')}" class="${inp}">
+            <input id="pf-name" placeholder="Nombre del plan" value="${esc(p.name || '')}" class="${inp}">
+            <select id="pf-app" class="${inp}">
+                ${appList.map(a => `<option value="${esc(a)}" ${(p.application || 'Otros') === a ? 'selected' : ''}>${esc(a)}</option>`).join('')}
+            </select>
             <input id="pf-price" type="number" step="0.01" min="0" placeholder="Precio" value="${p.price ?? ''}" class="${inp}">
-            <input id="pf-desc" placeholder="Descripcion" value="${esc(p.description || '')}" class="${inp} md:col-span-2">
             <input id="pf-days" type="number" min="1" placeholder="Duracion (dias)" value="${p.duration_days ?? ''}" class="${inp}">
+            <input id="pf-desc" placeholder="Descripcion" value="${esc(p.description || '')}" class="${inp} md:col-span-2">
         </div>
         <div class="mt-4 flex gap-2">
-            <button onclick="savePlan()" class="bg-[#1db954] hover:bg-[#1ed760] text-black px-5 py-2 rounded-full text-sm font-bold transition">Guardar</button>
+            <button onclick="savePlan(${p.id ?? ''})" class="bg-[#1db954] hover:bg-[#1ed760] text-black px-5 py-2 rounded-full text-sm font-bold transition">Guardar</button>
             <button onclick="$('plan-form-wrap').innerHTML=''" class="border border-white/15 hover:border-white/40 px-5 py-2 rounded-full text-sm transition">Cancelar</button>
         </div>
     </div>`;
 }
-async function savePlan() {
+async function savePlan(id) {
     const body = {
         name: $('pf-name').value,
+        application: $('pf-app').value,
         description: $('pf-desc').value,
         price: $('pf-price').value,
         duration_days: $('pf-days').value,
     };
     try {
-        await api('/membership-plans', { method: 'POST', body });
-        showAlert('Plan creado.');
+        if (id) {
+            await api('/membership-plans/' + id, { method: 'PUT', body });
+            showAlert('Plan actualizado.');
+        } else {
+            await api('/membership-plans', { method: 'POST', body });
+            showAlert('Plan creado.');
+        }
         $('plan-form-wrap').innerHTML = '';
         renderPlans();
     } catch (err) { showAlert(err.message, false); }
@@ -464,6 +579,11 @@ async function subscribe(planId) {
         go('subscriptions');
     } catch (err) { showAlert(err.message, false); }
 }
+async function cancelPlanSub(id) {
+    if (!confirm('¿Cancelar esta suscripcion?')) return;
+    try { await api('/subscriptions/' + id, { method: 'DELETE' }); showAlert('Suscripcion cancelada.'); renderPlans(); }
+    catch (err) { showAlert(err.message, false); }
+}
 
 /* ---------- SUBSCRIPTIONS ---------- */
 async function renderSubscriptions() {
@@ -476,12 +596,13 @@ async function renderSubscriptions() {
         if (!items.length) { box.innerHTML = '<div class="bg-[#181818] border border-white/5 rounded-xl p-8 text-zinc-400 text-sm text-center">No tienes suscripciones. Ve a "Planes" para suscribirte.</div>'; return; }
         box.innerHTML = `<div class="bg-[#181818] border border-white/5 rounded-xl overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead class="bg-black/30 text-left text-zinc-400 uppercase tracking-wider text-[11px]"><tr>
-                <th class="px-5 py-3.5">#</th>${admin ? '<th class="px-5 py-3.5">Cliente</th>' : ''}<th class="px-5 py-3.5">Plan</th>
+                <th class="px-5 py-3.5">#</th>${admin ? '<th class="px-5 py-3.5">Cliente</th>' : ''}<th class="px-5 py-3.5">Aplicacion</th><th class="px-5 py-3.5">Plan</th>
                 <th class="px-5 py-3.5">Estado</th><th class="px-5 py-3.5">Inicio</th><th class="px-5 py-3.5">Fin</th>
                 <th class="px-5 py-3.5">Proxima facturacion</th><th class="px-5 py-3.5"></th>
             </tr></thead><tbody>
             ${items.map(s => `<tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.03]">
                 <td class="px-5 py-3 text-zinc-400">${s.id}</td>${admin ? `<td class="px-5 py-3 text-zinc-400">${esc(s.user_id)}</td>` : ''}
+                <td class="px-5 py-3">${appBadge(s.application)}</td>
                 <td class="px-5 py-3 font-semibold">${esc(s.plan)}</td>
                 <td class="px-5 py-3">${badge(s.status)}</td>
                 <td class="px-5 py-3 text-zinc-400">${dt(s.starts_at)}</td><td class="px-5 py-3 text-zinc-400">${dt(s.ends_at)}</td>
@@ -508,23 +629,30 @@ async function renderInvoices() {
         if (!items.length) { box.innerHTML = '<div class="bg-[#181818] border border-white/5 rounded-xl p-8 text-zinc-400 text-sm text-center">Sin facturas.</div>'; return; }
         box.innerHTML = `<div class="bg-[#181818] border border-white/5 rounded-xl overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead class="bg-black/30 text-left text-zinc-400 uppercase tracking-wider text-[11px]"><tr>
-                <th class="px-5 py-3.5">#</th><th class="px-5 py-3.5">Plan</th><th class="px-5 py-3.5">Monto</th>
+                <th class="px-5 py-3.5">#</th><th class="px-5 py-3.5">Aplicacion</th><th class="px-5 py-3.5">Plan</th><th class="px-5 py-3.5">Monto</th>
                 <th class="px-5 py-3.5">Estado</th><th class="px-5 py-3.5">Referencia</th><th class="px-5 py-3.5">Pagada</th><th class="px-5 py-3.5"></th>
             </tr></thead><tbody>
             ${items.map(i => `<tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.03]">
-                <td class="px-5 py-3 text-zinc-400">${i.id}</td><td class="px-5 py-3 font-semibold">${esc(i.plan)}</td>
+                <td class="px-5 py-3 text-zinc-400">${i.id}</td>
+                <td class="px-5 py-3">${appBadge(i.application)}</td>
+                <td class="px-5 py-3 font-semibold">${esc(i.plan)}</td>
                 <td class="px-5 py-3 font-bold">${fmt(i.amount)}</td>
                 <td class="px-5 py-3">${badge(i.status)}</td>
                 <td class="px-5 py-3 text-zinc-400">${esc(i.payment_reference || '-')}</td>
                 <td class="px-5 py-3 text-zinc-400">${dt(i.paid_at)}</td>
-                <td class="px-5 py-3 text-right">
-                    ${!admin && i.status !== 'paid' ? `<div class="flex gap-2 justify-end">
-                        <button onclick="payInvoice(${i.id})" class="bg-[#1db954] hover:bg-[#1ed760] text-black rounded-full px-4 py-1.5 text-xs font-bold transition">Pagar</button>
-                        <button onclick="payInvoice(${i.id}, 'declined')" class="border border-red-500/40 text-red-400 hover:bg-red-500/10 rounded-full px-4 py-1.5 text-xs font-semibold transition">Simular rechazo</button>
-                    </div>` : ''}
-                    ${admin ? `<select onchange="changeInvoiceStatus(${i.id}, this.value)" class="bg-[#121212] border border-white/10 rounded-full px-3 py-1.5 text-xs text-white focus:outline-none">
-                        ${['pending','paid','failed'].map(s => `<option value="${s}" ${s === i.status ? 'selected' : ''}>${s}</option>`).join('')}
-                    </select>` : ''}
+                <td class="px-5 py-3">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        ${!admin && i.status !== 'paid' ? `
+                            <button onclick="payInvoice(${i.id})" class="bg-[#1db954] hover:bg-[#1ed760] text-black rounded-full px-4 py-1.5 text-xs font-bold transition">Pagar</button>
+                            <button onclick="payInvoice(${i.id}, 'declined')" class="border border-red-500/40 text-red-400 hover:bg-red-500/10 rounded-full px-4 py-1.5 text-xs font-semibold transition">Simular rechazo</button>
+                        ` : ''}
+                        ${admin ? `<select onchange="changeInvoiceStatus(${i.id}, this.value)" class="bg-[#121212] border border-white/10 rounded-full px-3 py-1.5 text-xs text-white focus:outline-none">
+                            ${['pending','paid','failed'].map(s => `<option value="${s}" ${s === i.status ? 'selected' : ''}>${s}</option>`).join('')}
+                        </select>` : ''}
+                        <button onclick="downloadPdf(${i.id})" title="Descargar PDF" class="border border-white/15 hover:border-[#1db954] hover:text-[#1db954] rounded-full px-3 py-1.5 text-xs font-semibold transition inline-flex items-center gap-1.5">
+                            ${I.pdf} PDF
+                        </button>
+                    </div>
                 </td>
             </tr>`).join('')}
             </tbody></table></div></div>`;
@@ -543,6 +671,21 @@ async function payInvoice(id, decision) {
 async function changeInvoiceStatus(id, status) {
     try { await api('/invoices/' + id + '/status', { method: 'PATCH', body: { status } }); showAlert('Estado actualizado.'); renderInvoices(); }
     catch (err) { showAlert(err.message, false); }
+}
+async function downloadPdf(id) {
+    try {
+        const res = await fetch(API + '/invoices/' + id + '/pdf', { headers: { 'Accept': 'application/pdf', 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) throw new Error('No se pudo generar el PDF.');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'factura-' + String(id).padStart(6, '0') + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    } catch (err) { showAlert(err.message, false); }
 }
 
 /* ---------- PAYMENTS ---------- */

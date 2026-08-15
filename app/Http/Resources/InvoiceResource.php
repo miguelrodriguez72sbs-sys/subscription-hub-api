@@ -12,6 +12,7 @@ class InvoiceResource extends JsonResource
         return [
             'id' => $this->id,
             'subscription_id' => $this->subscription_id,
+            'application' => $this->subscription->membershipPlan->application ?? null,
             'plan' => $this->subscription->membershipPlan->name ?? null,
             'amount' => $this->amount,
             'status' => $this->status,

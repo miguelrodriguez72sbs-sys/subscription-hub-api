@@ -11,6 +11,7 @@ class MembershipPlan extends Model
 
     protected $fillable = [
         'name',
+        'application',
         'description',
         'price',
         'duration_days',
