@@ -648,7 +648,7 @@ async function cancelPlanSub(id) {
 }
 
 /* ---------- CHANGE PLAN / CHECKOUT ---------- */
-let checkout = { sub: null, plan: null, currentPlan: null, difference: 0, busy: false };
+let checkout = { mode: null, sub: null, plan: null, currentPlan: null, difference: 0, busy: false };
 
 async function planAction(planId) {
     const plan = plansCache.find(x => x.id === planId);
@@ -658,15 +658,42 @@ async function planAction(planId) {
         const s = await api('/subscriptions');
         active = (s.data ?? s).find(x => x.application === plan.application && x.status === 'active');
     } catch (err) { showAlert(err.message, false); return; }
-    if (active) openCheckout(active, plan);
-    else subscribe(planId);
+    if (active) openCheckoutChange(active, plan);
+    else openCheckoutNew(plan);
 }
 
-function openCheckout(active, plan) {
+function openCheckoutNew(plan) {
+    checkout = { mode: 'new', sub: null, plan, currentPlan: null, difference: Number(plan.price), busy: false };
+    $('checkout-summary').innerHTML = `
+        <div class="flex items-center justify-between text-sm gap-3">
+            <div>
+                <p class="text-xs text-zinc-500">Vas a suscribirte a</p>
+                <p class="font-semibold">${esc(plan.name)}</p>
+                <p class="text-xs text-zinc-400">${esc(plan.application)}</p>
+            </div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5 text-[#1db954] shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12l-7.5 7.5M21 12H3"/></svg>
+            <div class="text-right">
+                <p class="text-xs text-zinc-500">Precio</p>
+                <p class="font-bold text-[#1ed760]">${fmt(plan.price)}</p>
+                <p class="text-xs text-zinc-400">/ ${plan.duration_days} dias</p>
+            </div>
+        </div>`;
+    const btn = $('checkout-pay');
+    btn.innerHTML = 'Pagar ' + fmt(plan.price);
+    btn.disabled = false;
+    $('checkout-error').classList.add('hidden');
+    $('checkout-ok').classList.add('hidden');
+    $('checkout-simulate').checked = false;
+    selectMethod('card');
+    $('checkout-modal').classList.remove('hidden');
+}
+
+function openCheckoutChange(active, plan) {
     const currentPlan = plansCache.find(x => x.id === active.plan_id);
     if (!currentPlan) return;
     const up = Number(plan.price) > Number(currentPlan.price);
     checkout = {
+        mode: 'change',
         sub: active,
         plan,
         currentPlan,
@@ -720,19 +747,30 @@ async function confirmCheckout() {
     btn.innerHTML = 'Procesando...';
     $('checkout-error').classList.add('hidden');
     try {
-        const body = {
-            membership_plan_id: checkout.plan.id,
-            payment_method: document.querySelector('input[name="checkout-method"]:checked').value,
-        };
-        if ($('checkout-simulate').checked) body.simulate_decision = 'declined';
-        const res = await api('/subscriptions/' + checkout.sub.id + '/change-plan', { method: 'POST', body });
-        $('checkout-ok').textContent = res.message;
+        if (checkout.mode === 'new') {
+            const body = {
+                membership_plan_id: checkout.plan.id,
+            };
+            if ($('checkout-simulate').checked) body.simulate_decision = 'declined';
+            await api('/subscriptions', { method: 'POST', body });
+            $('checkout-ok').textContent = 'Suscripcion creada correctamente.';
+        } else {
+            const body = {
+                membership_plan_id: checkout.plan.id,
+                payment_method: document.querySelector('input[name="checkout-method"]:checked').value,
+            };
+            if ($('checkout-simulate').checked) body.simulate_decision = 'declined';
+            const res = await api('/subscriptions/' + checkout.sub.id + '/change-plan', { method: 'POST', body });
+            $('checkout-ok').textContent = res.message;
+        }
         $('checkout-ok').classList.remove('hidden');
         setTimeout(() => { closeCheckout(); renderPlans(); }, 1600);
     } catch (err) {
         $('checkout-error').textContent = err.message;
         $('checkout-error').classList.remove('hidden');
-        btn.innerHTML = checkout.difference > 0 ? 'Pagar ' + fmt(checkout.difference) : 'Confirmar cambio de plan';
+        btn.innerHTML = checkout.mode === 'new'
+            ? 'Pagar ' + fmt(checkout.plan.price)
+            : (checkout.difference > 0 ? 'Pagar ' + fmt(checkout.difference) : 'Confirmar cambio de plan');
     } finally {
         checkout.busy = false;
         btn.disabled = false;
