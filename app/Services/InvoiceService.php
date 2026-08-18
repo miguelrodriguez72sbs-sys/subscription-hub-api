@@ -23,6 +23,15 @@ class InvoiceService
         return Invoice::with('subscription')->findOrFail($id);
     }
 
+    public function findForPdf(int $id): Invoice
+    {
+        return Invoice::with([
+            'subscription.user',
+            'subscription.membershipPlan',
+            'payments' => fn ($query) => $query->latest(),
+        ])->findOrFail($id);
+    }
+
     public function belongsToUser(Invoice $invoice, int $userId): bool
     {
         return $invoice->subscription->user_id === $userId;

@@ -867,12 +867,15 @@ async function changeInvoiceStatus(id, status) {
 async function downloadPdf(id) {
     try {
         const res = await fetch(API + '/invoices/' + id + '/pdf', { headers: { 'Accept': 'application/pdf', 'Authorization': 'Bearer ' + token } });
-        if (!res.ok) throw new Error('No se pudo generar el PDF.');
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.message || 'No se pudo generar el PDF.');
+        }
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'factura-' + String(id).padStart(6, '0') + '.pdf';
+        a.download = 'factura-SH-' + String(id).padStart(6, '0') + '.pdf';
         document.body.appendChild(a);
         a.click();
         a.remove();

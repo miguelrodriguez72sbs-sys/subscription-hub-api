@@ -84,7 +84,7 @@ class InvoicesAndPaymentsTest extends TestCase
         ]);
     }
 
-    public function test_client_cannot_view_other_users_invoice(): void
+    public function test_client_can_view_own_invoice(): void
     {
         [, $invoice, $token] = $this->makeClientWithSubscription();
 
@@ -96,23 +96,37 @@ class InvoicesAndPaymentsTest extends TestCase
     {
         [, $invoice, $token] = $this->makeClientWithSubscription();
 
-        $response = $this->get("/api/invoices/{$invoice->id}/pdf", ['Authorization' => "Bearer $token"]);
+        $response = $this->get("/api/invoices/{$invoice->id}/pdf", [
+            'Authorization' => "Bearer $token",
+        ]);
 
-        $response->assertOk();
-        $response->assertHeader('Content-Type', 'application/pdf');
-        $this->assertStringStartsWith('%PDF', $response->getContent());
+        $response->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf')
+            ->assertHeader('Content-Disposition', 'attachment; filename="factura-SH-000001.pdf"');
+
+        $this->assertStringStartsWith('%PDF-', $response->getContent());
+    }
+
+    public function test_client_cannot_download_another_users_invoice_pdf(): void
+    {
+        [, $invoice] = $this->makeClientWithSubscription();
+        $otherClient = User::factory()->create(['role' => 'client']);
+        $otherToken = $otherClient->createToken('auth_token')->plainTextToken;
+
+        $this->get("/api/invoices/{$invoice->id}/pdf", [
+            'Authorization' => "Bearer $otherToken",
+        ])->assertForbidden();
     }
 
     public function test_admin_can_download_any_invoice_pdf(): void
     {
         [, $invoice] = $this->makeClientWithSubscription();
-
         $admin = User::factory()->create(['role' => 'admin']);
         $adminToken = $admin->createToken('auth_token')->plainTextToken;
 
-        $this->get("/api/invoices/{$invoice->id}/pdf", ['Authorization' => "Bearer $adminToken"])
-            ->assertOk()
-            ->assertHeader('Content-Type', 'application/pdf');
+        $this->get("/api/invoices/{$invoice->id}/pdf", [
+            'Authorization' => "Bearer $adminToken",
+        ])->assertOk()->assertHeader('Content-Type', 'application/pdf');
     }
 
     public function test_admin_can_update_invoice_status(): void

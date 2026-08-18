@@ -21,6 +21,12 @@ class Subscription extends Model
         'next_billing_date'
     ];
 
+    protected $casts = [
+        'starts_at' => 'datetime',
+        'ends_at' => 'datetime',
+        'next_billing_date' => 'datetime',
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class);
